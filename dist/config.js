@@ -1,6 +1,5 @@
-// SupabaseのProject Settings → API / Data APIから転記します。
-// anon（公開）キーのみ使用。service_roleやsecretキーは絶対に記載しないでください。
+// ブラウザー公開用の接続情報です。秘密キーは使用しません。
 window.LAB_CONFIG = {
-  supabaseUrl: '',
-  anonKey: ''
+  "supabaseUrl": "https://prugathfqdbvvlkavqeh.supabase.co",
+  "anonKey": "sb_publishable_Y5caQsyzar6BHzAiM4yptQ_bAGCttI5"
 };
