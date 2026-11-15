@@ -28,6 +28,9 @@ jobs:
       - name: Pagesを設定
         uses: actions/configure-pages@v5
 
+      - name: 最新の画面ファイルを取得できるようにする
+        run: node scripts/version-assets.mjs
+
       - name: distフォルダーを公開用に準備
         uses: actions/upload-pages-artifact@v3
         with:
