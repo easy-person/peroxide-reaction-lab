@@ -1,0 +1,9 @@
+{
+  "name": "peroxide-reaction-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "過酸化水素の分解速度を酸素の捕集記録から解析する学習教材",
+  "scripts": {
+    "test": "node tests/chem.cjs && node tests/ui.cjs"
+  }
+}
