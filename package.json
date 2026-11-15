@@ -4,7 +4,7 @@
   "private": true,
   "description": "過酸化水素の分解速度を酸素の捕集記録から解析する学習教材",
   "scripts": {
-    "test": "node tests/chem.cjs && node tests/database.cjs && node tests/classrooms.cjs && node tests/ui.cjs && node tests/classroom-ui.cjs"
+    "test": "node tests/chem.cjs && node tests/database.cjs && node tests/classrooms.cjs && node tests/course-entry.cjs && node tests/ui.cjs && node tests/classroom-ui.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",

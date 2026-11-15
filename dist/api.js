@@ -9,7 +9,7 @@
       method,headers:{'Content-Type':'application/json',apikey:config.anonKey,
         ...(authenticated?{Authorization:'Bearer '+(session?.access_token||'')}:config.anonKey.startsWith('eyJ')?{Authorization:'Bearer '+config.anonKey}:{})},body:JSON.stringify(body)});
     const data=await response.json().catch(()=>null);
-    if(!response.ok)throw Error(response.status===401?'ログインの有効期限が切れています。再度ログインしてください。':terms(data?.message||data?.msg||data?.error_description||'通信に失敗しました。入力はそのまま残っています。'));
+    if(!response.ok)throw Error(response.status===401?'ログインの有効期限が切れています。再度ログインしてください。':(path.includes('lab_course_')||path.includes('lab_student_save')?String:terms)(data?.message||data?.msg||data?.error_description||'通信に失敗しました。入力はそのまま残っています。'));
     return data;
   }
   window.LabAPI={ready,
