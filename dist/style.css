@@ -2,3 +2,5 @@
 
 input[readonly]{background:#eef3ef;color:#71847b}button:disabled{opacity:.25;cursor:default}
 fieldset{border:0;padding:0;margin:0;min-width:0}.primary{background:var(--teal);color:white;border-color:var(--teal)}.primary:hover{background:#096b67}.actionbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.conditions{font-size:13px}.conditions dt{color:var(--muted);margin-top:20px}.conditions dd{font-size:17px;margin:6px 0 0}.login{max-width:440px;margin:25px auto}.login button,.settings button.primary{margin-top:22px}.group-row{padding:20px 0;border-bottom:1px solid var(--line)}.group-row button{font-size:11px;margin:5px 5px 0 0}#group-link{margin:10px 0;font-size:12px}#admin-status,#status{margin-bottom:24px}#runsbox>button{margin-top:15px}
+
+button.danger{color:#a83f32;border-color:#e7c2ba}button.danger:hover{background:#fff0ec}

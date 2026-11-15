@@ -13,4 +13,11 @@ let otherGroup=await as('authenticated',other,()=>rpc('lab_admin_create',['別�
 const intervalRows=[{time:0,vol:5},...rows.slice(1).map((r,i)=>({time:r.time,vol:r.vol-rows[i].vol}))];let intervalSaved=await as('anon',null,()=>rpc('lab_student_save',[otherGroup.token,intervalRows,'55555555-5555-4555-8555-555555555555']));assert(Math.abs(intervalSaved.concentrations.at(-1).c-expected.data.at(-1).c)<1e-9);
 await assert.rejects(rpc('lab_compute',[[{time:0,vol:0},{time:0,vol:1}],config]),/時間/);await assert.rejects(rpc('lab_compute',[[{time:0,vol:0}],{...config,temp:100}]),/条件/);await assert.rejects(rpc('lab_compute',[[{time:0,vol:'NaN'}],config]),/範囲外/);
 await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.id,false,false]));await as('anon',null,()=>assert.rejects(rpc('lab_student_save',[group.token,rows,'66666666-6666-4666-8666-666666666666']),/終了/));let rotated=await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.id,true,true]));assert.notEqual(rotated.token,group.token);await as('anon',null,()=>assert.rejects(rpc('lab_student_open',[group.token]),/無効/));assert.equal((await as('anon',null,()=>rpc('lab_student_open',[rotated.token]))).record.id,saved.id);
+await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.id,false,true]));
+await as('anon',null,()=>assert.rejects(rpc('lab_student_open',[rotated.token]),/無効|終了/));
+await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.id,true,false]));
+await as('anon',null,()=>assert.rejects(rpc('lab_student_open',[rotated.token]),/無効/));
+assert.equal((await as('authenticated',teacher,()=>rpc('lab_admin_runs',[group.id])))[0].id,saved.id);
+let reissued=await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.id,true,true]));
+assert.equal((await as('anon',null,()=>rpc('lab_student_open',[reissued.token]))).record.id,saved.id);
 console.log('PASS: SQL calculations match Excel reference; anonymous record save/read; no analysis fields exposed; direct table/helper access denied; teacher login authorization; cross-teacher and cross-group isolation; idempotent retries; validation; close/reopen and link revocation.');await db.close();})().catch(e=>{console.error(e);process.exitCode=1;});
