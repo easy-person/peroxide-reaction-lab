@@ -1,5 +1,5 @@
 const {PGlite}=require('@electric-sql/pglite');const assert=require('node:assert/strict');const fs=require('node:fs'),path=require('node:path');const ref=require('./reference-calc.cjs');
-(async()=>{const db=new PGlite();await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;`);await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/schema.sql'),'utf8'));const teacher='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222',outsider='33333333-3333-4333-8333-333333333333';for(const id of[teacher,other,outsider])await db.query('insert into auth.users values($1)',[id]);for(const id of[teacher,other])await db.query('insert into public.lab_teachers values($1)',[id]);
+(async()=>{const db=new PGlite();await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;`);await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/schema.sql'),'utf8'));await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261115_delete_empty_groups.sql'),'utf8'));const teacher='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222',outsider='33333333-3333-4333-8333-333333333333';for(const id of[teacher,other,outsider])await db.query('insert into auth.users values($1)',[id]);for(const id of[teacher,other])await db.query('insert into public.lab_teachers values($1)',[id]);
 async function as(role,id,fn){await db.exec('set role '+role);await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id||'']);try{return await fn();}finally{await db.exec('reset role');}}
 async function rpc(name,args=[]){const q=await db.query('select public.'+name+'('+args.map((_,i)=>'$'+(i+1)).join(',')+') as value',args);return q.rows[0].value;}
 const config={temp:25,pressure:101300,volume:2,unit:'min',input:'total',wet:true,mode:'estimate'};const factor=(101300-ref.vapor(25))*1e-6/(8.31*298.15);const rows=[{time:0,vol:5},...Array.from({length:5},(_,i)=>{let t=(i+1)*2,n=.8*(1-Math.exp(-.0015*t*60))*.002/2;return {time:t,vol:5+n/factor};})];
@@ -20,4 +20,14 @@ await as('anon',null,()=>assert.rejects(rpc('lab_student_open',[rotated.token]),
 assert.equal((await as('authenticated',teacher,()=>rpc('lab_admin_runs',[group.id])))[0].id,saved.id);
 let reissued=await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.id,true,true]));
 assert.equal((await as('anon',null,()=>rpc('lab_student_open',[reissued.token]))).record.id,saved.id);
+await as('anon',null,()=>assert.rejects(rpc('lab_admin_delete',[group.id]),/permission denied/));
+await as('authenticated',other,()=>assert.rejects(rpc('lab_admin_delete',[group.id]),/見つかりません/));
+await as('authenticated',teacher,()=>assert.rejects(rpc('lab_admin_delete',[group.id]),/保存記録/));
+let accidental=await as('authenticated',teacher,()=>rpc('lab_admin_create',['3',config]));
+let keep=await as('authenticated',teacher,()=>rpc('lab_admin_create',['3年1組',config]));
+let deleted=await as('authenticated',teacher,()=>rpc('lab_admin_delete',[accidental.id]));assert.equal(deleted.deleted,true);assert.equal(deleted.id,accidental.id);
+let left=await as('authenticated',teacher,()=>rpc('lab_admin_groups'));assert(!left.some(g=>g.id===accidental.id));assert(left.some(g=>g.id===keep.id));
+await as('anon',null,()=>assert.rejects(rpc('lab_student_open',[accidental.token]),/無効/));
+assert.equal((await as('authenticated',teacher,()=>rpc('lab_admin_runs',[group.id])))[0].id,saved.id);
+console.log('PASS: empty-group deletion; owner-only access; existing submissions protected; deleted links invalid; other groups unchanged.');
 console.log('PASS: SQL calculations match Excel reference; anonymous record save/read; no analysis fields exposed; direct table/helper access denied; teacher login authorization; cross-teacher and cross-group isolation; idempotent retries; validation; close/reopen and link revocation.');await db.close();})().catch(e=>{console.error(e);process.exitCode=1;});

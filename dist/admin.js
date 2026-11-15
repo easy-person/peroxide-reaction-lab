@@ -11,7 +11,17 @@ async function list(){groups=await LabAPI.rpc('lab_admin_groups',{},true);const 
     if(currentLinkGroup===g.id){$('linkbox').hidden=true;$('group-link').value='';$('new-group').textContent='';currentLinkGroup=null;}
     await list();status('班専用リンクを削除しました。実験記録は残っています。再度配布する場合は「リンク再発行」を押してください。');
   }catch(e){status(e.message,true);}finally{remove.disabled=false;}
-};row.append(view,close,rotate,remove);box.append(row);}}
+};const deleteGroup=document.createElement('button');deleteGroup.textContent='班を削除';deleteGroup.className='danger';deleteGroup.disabled=Number(g.runs)>0;deleteGroup.title=Number(g.runs)>0?'保存記録がある班は削除できません。':'班を一覧から完全に削除します。';deleteGroup.onclick=async()=>{
+  if(!confirm('「'+g.label+'」を一覧から完全に削除しますか？班専用リンクも使えなくなります。'))return;
+  deleteGroup.disabled=true;
+  try{
+    await LabAPI.rpc('lab_admin_delete',{p_group_id:g.id},true);
+    if(currentLinkGroup===g.id){$('linkbox').hidden=true;$('group-link').value='';$('new-group').textContent='';currentLinkGroup=null;}
+    if(selected?.id===g.id){selected=null;runs=[];$('runsbox').hidden=true;$('runs').replaceChildren();}
+    await list();status('「'+g.label+'」を削除しました。');
+  }catch(e){status(e.message.includes('lab_admin_delete')?'班削除機能の初回設定が必要です。GitHubの「データベースの機能を更新」を実行してください。':e.message,true);}
+  finally{deleteGroup.disabled=Number(g.runs)>0;}
+};row.append(view,close,rotate,remove,deleteGroup);box.append(row);}}
 async function loadRuns(g){try{runs=await LabAPI.rpc('lab_admin_runs',{p_group_id:g.id},true);selected=g;$('runsbox').hidden=false;$('run-title').textContent=g.label+' の保存履歴';const box=$('runs');box.replaceChildren();if(!runs.length){box.textContent='まだ提出されていません。';return;}for(const r of runs){const section=document.createElement('details');const summary=document.createElement('summary');summary.textContent=new Date(r.created_at).toLocaleString('ja-JP')+' ／ k = '+format(r.analysis.k)+' s⁻¹';section.append(summary);const note=document.createElement('p');note.textContent=`初濃度：${format(r.analysis.c0)} mol/L ／ 回帰切片：${format(r.analysis.intercept)} mol/(L·s)`;section.append(note);if(r.analysis.warning){const warning=document.createElement('p');warning.textContent=r.analysis.warning;section.append(warning);}const scroll=document.createElement('div');scroll.className='scroll';const table=document.createElement('table');const head=document.createElement('tr');['時間(s)','入力体積(mL)','濃度(mol/L)','区間平均減少速度(mol/(L·s))'].forEach(s=>cell(head,s,'th'));table.append(head);r.analysis.concentrations.forEach((p,i)=>{const row=document.createElement('tr');[p.t,r.rows[i].vol,format(p.c),i===0?'—':format(r.analysis.rates[i-1]?.rate)].forEach(s=>cell(row,s));table.append(row);});scroll.append(table);section.append(scroll);box.append(section);}status('教員用の解析結果を表示しました。');}catch(e){status(e.message,true);}}
 $('mode').onchange=()=>{$('known').hidden=$('mode').value!=='known';$('c0').required=$('mode').value==='known';};
 $('login').onsubmit=async e=>{e.preventDefault();const button=e.currentTarget.querySelector('button');button.disabled=true;status('認証しています…');try{await LabAPI.login($('email').value,$('password').value);$('password').value='';$('login').hidden=true;$('admin').hidden=false;await list();status('ログインしました。');}catch(error){$('password').value='';status(error.message,true);}finally{button.disabled=false;}};
