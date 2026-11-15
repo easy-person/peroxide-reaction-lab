@@ -21,7 +21,23 @@ async function list(){groups=await LabAPI.rpc('lab_admin_groups',{},true);const 
     await list();status('「'+g.label+'」を削除しました。');
   }catch(e){status(e.message.includes('lab_admin_delete')?'班削除機能の初回設定が必要です。GitHubの「データベースの機能を更新」を実行してください。':e.message,true);}
   finally{deleteGroup.disabled=Number(g.runs)>0;}
-};row.append(view,close,rotate,remove,deleteGroup);box.append(row);}}
+};const edit=document.createElement('button');edit.textContent='班名を編集';
+const editor=document.createElement('form');editor.className='group-editor';editor.hidden=true;
+const label=document.createElement('label');label.textContent='新しい班名';const input=document.createElement('input');input.type='text';input.value=g.label;input.maxLength=100;input.required=true;input.setAttribute('aria-label',g.label+' の新しい班名');label.append(input);
+const save=document.createElement('button');save.type='submit';save.textContent='班名を保存';save.className='primary';
+const cancel=document.createElement('button');cancel.type='button';cancel.textContent='キャンセル';
+edit.onclick=()=>{editor.hidden=false;input.value=g.label;input.focus();input.select();};cancel.onclick=()=>{editor.hidden=true;edit.focus();};
+editor.onsubmit=async e=>{
+  e.preventDefault();const value=input.value.trim();if(!value||Array.from(value).length>100){status('班名は1～100文字で入力してください。',true);input.focus();return;}
+  save.disabled=true;cancel.disabled=true;input.disabled=true;edit.disabled=true;
+  try{
+    const updated=await LabAPI.rpc('lab_admin_rename',{p_group_id:g.id,p_label:value},true);
+    if(currentLinkGroup===g.id)$('new-group').textContent=updated.label;
+    if(selected?.id===g.id){selected={...selected,label:updated.label};$('run-title').textContent=updated.label+' の保存履歴';}
+    await list();status('班名を「'+updated.label+'」に変更しました。配布済みリンクはそのまま使用できます。');
+  }catch(error){status(error.message,true);}
+  finally{save.disabled=false;cancel.disabled=false;input.disabled=false;edit.disabled=false;}
+};editor.append(label,save,cancel);row.append(edit,view,close,rotate,remove,deleteGroup,editor);box.append(row);}}
 async function loadRuns(g){try{runs=await LabAPI.rpc('lab_admin_runs',{p_group_id:g.id},true);selected=g;$('runsbox').hidden=false;$('run-title').textContent=g.label+' の保存履歴';const box=$('runs');box.replaceChildren();if(!runs.length){box.textContent='まだ提出されていません。';return;}for(const r of runs){const section=document.createElement('details');const summary=document.createElement('summary');summary.textContent=new Date(r.created_at).toLocaleString('ja-JP')+' ／ k = '+format(r.analysis.k)+' s⁻¹';section.append(summary);const note=document.createElement('p');note.textContent=`初濃度：${format(r.analysis.c0)} mol/L ／ 回帰切片：${format(r.analysis.intercept)} mol/(L·s)`;section.append(note);if(r.analysis.warning){const warning=document.createElement('p');warning.textContent=r.analysis.warning;section.append(warning);}const scroll=document.createElement('div');scroll.className='scroll';const table=document.createElement('table');const head=document.createElement('tr');['時間(s)','入力体積(mL)','濃度(mol/L)','区間平均減少速度(mol/(L·s))'].forEach(s=>cell(head,s,'th'));table.append(head);r.analysis.concentrations.forEach((p,i)=>{const row=document.createElement('tr');[p.t,r.rows[i].vol,format(p.c),i===0?'—':format(r.analysis.rates[i-1]?.rate)].forEach(s=>cell(row,s));table.append(row);});scroll.append(table);section.append(scroll);box.append(section);}status('教員用の解析結果を表示しました。');}catch(e){status(e.message,true);}}
 $('mode').onchange=()=>{$('known').hidden=$('mode').value!=='known';$('c0').required=$('mode').value==='known';};
 $('login').onsubmit=async e=>{e.preventDefault();const button=e.currentTarget.querySelector('button');button.disabled=true;status('認証しています…');try{await LabAPI.login($('email').value,$('password').value);$('password').value='';$('login').hidden=true;$('admin').hidden=false;await list();status('ログインしました。');}catch(error){$('password').value='';status(error.message,true);}finally{button.disabled=false;}};
