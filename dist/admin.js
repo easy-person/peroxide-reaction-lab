@@ -11,16 +11,16 @@ async function list(){groups=await LabAPI.rpc('lab_admin_groups',{},true);const 
     if(currentLinkGroup===g.id){$('linkbox').hidden=true;$('group-link').value='';$('new-group').textContent='';currentLinkGroup=null;}
     await list();status('班専用リンクを削除しました。実験記録は残っています。再度配布する場合は「リンク再発行」を押してください。');
   }catch(e){status(e.message,true);}finally{remove.disabled=false;}
-};const deleteGroup=document.createElement('button');deleteGroup.textContent='班を削除';deleteGroup.className='danger';deleteGroup.disabled=Number(g.runs)>0;deleteGroup.title=Number(g.runs)>0?'保存記録がある班は削除できません。':'班を一覧から完全に削除します。';deleteGroup.onclick=async()=>{
-  if(!confirm('「'+g.label+'」を一覧から完全に削除しますか？班専用リンクも使えなくなります。'))return;
+};const deleteGroup=document.createElement('button');deleteGroup.textContent='班を削除';deleteGroup.className='danger';deleteGroup.title='班と保存済みの実験記録を完全に削除します。';deleteGroup.onclick=async()=>{
+  if(!confirm('「'+g.label+'」と保存済みの実験記録 '+g.runs+' 件を完全に削除しますか？\nこの操作は取り消せません。班専用リンクも使えなくなります。'))return;
   deleteGroup.disabled=true;
   try{
     await LabAPI.rpc('lab_admin_delete',{p_group_id:g.id},true);
     if(currentLinkGroup===g.id){$('linkbox').hidden=true;$('group-link').value='';$('new-group').textContent='';currentLinkGroup=null;}
     if(selected?.id===g.id){selected=null;runs=[];$('runsbox').hidden=true;$('runs').replaceChildren();}
-    await list();status('「'+g.label+'」を削除しました。');
+    await list();status('「'+g.label+'」と保存済みの実験記録を削除しました。');
   }catch(e){status(e.message.includes('lab_admin_delete')?'班削除機能の初回設定が必要です。GitHubの「データベースの機能を更新」を実行してください。':e.message,true);}
-  finally{deleteGroup.disabled=Number(g.runs)>0;}
+  finally{deleteGroup.disabled=false;}
 };const edit=document.createElement('button');edit.textContent='班名を編集';
 const editor=document.createElement('form');editor.className='group-editor';editor.hidden=true;
 const label=document.createElement('label');label.textContent='新しい班名';const input=document.createElement('input');input.type='text';input.value=g.label;input.maxLength=100;input.required=true;input.setAttribute('aria-label',g.label+' の新しい班名');label.append(input);

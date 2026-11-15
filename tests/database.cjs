@@ -22,7 +22,7 @@ let reissued=await as('authenticated',teacher,()=>rpc('lab_admin_access',[group.
 assert.equal((await as('anon',null,()=>rpc('lab_student_open',[reissued.token]))).record.id,saved.id);
 await as('anon',null,()=>assert.rejects(rpc('lab_admin_delete',[group.id]),/permission denied/));
 await as('authenticated',other,()=>assert.rejects(rpc('lab_admin_delete',[group.id]),/見つかりません/));
-await as('authenticated',teacher,()=>assert.rejects(rpc('lab_admin_delete',[group.id]),/保存記録/));
+
 let accidental=await as('authenticated',teacher,()=>rpc('lab_admin_create',['3',config]));
 let keep=await as('authenticated',teacher,()=>rpc('lab_admin_create',['3年1組',config]));
 let deleted=await as('authenticated',teacher,()=>rpc('lab_admin_delete',[accidental.id]));assert.equal(deleted.deleted,true);assert.equal(deleted.id,accidental.id);
@@ -36,6 +36,11 @@ let renamed=await as('authenticated',teacher,()=>rpc('lab_admin_rename',[group.i
 const afterRename=await as('anon',null,()=>rpc('lab_student_open',[reissued.token]));assert.equal(afterRename.label,'3年1組・第1班');assert.equal(afterRename.record.id,saved.id);assert.deepEqual(afterRename.settings,config);
 assert.equal((await as('authenticated',teacher,()=>rpc('lab_admin_runs',[group.id])))[0].id,saved.id);
 assert((await as('authenticated',teacher,()=>rpc('lab_admin_groups'))).some(g=>g.id===keep.id&&g.label==='3年1組'));
+let removedWithRuns=await as('authenticated',teacher,()=>rpc('lab_admin_delete',[group.id]));assert.equal(removedWithRuns.deleted_runs,1);
+assert.equal((await db.query('select count(*)::int as n from public.lab_runs where group_id=$1',[group.id])).rows[0].n,0);
+await as('anon',null,()=>assert.rejects(rpc('lab_student_open',[reissued.token]),/無効/));
+assert.equal((await as('authenticated',other,()=>rpc('lab_admin_runs',[otherGroup.id])))[0].id,intervalSaved.id);
+console.log('PASS: deletion cascades to own group records, other groups and their records preserved.');
 console.log('PASS: owner-only rename, empty/long-name rejection, trimmed names, existing links/settings/records preserved.');
-console.log('PASS: empty-group deletion; owner-only access; existing submissions protected; deleted links invalid; other groups unchanged.');
+console.log('PASS: empty-group deletion; owner-only access; record deletion scoped to selected group; deleted links invalid; other groups unchanged.');
 console.log('PASS: SQL calculations match Excel reference; anonymous record save/read; no analysis fields exposed; direct table/helper access denied; teacher login authorization; cross-teacher and cross-group isolation; idempotent retries; validation; close/reopen and link revocation.');await db.close();})().catch(e=>{console.error(e);process.exitCode=1;});
